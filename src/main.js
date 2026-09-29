@@ -8,12 +8,35 @@ document.querySelector("#app").innerHTML = `
     <p id="status">Le modèle n’est pas encore chargé.</p>
     <button id="load">Charger Qwen</button>
 
-    <textarea
-      id="prompt"
-      rows="6"
-      placeholder="Écris une question..."
-      disabled
-    ></textarea>
+    <div class="editor">
+      <label for="system-prompt">System</label>
+      <textarea
+        id="system-prompt"
+        rows="10"
+        placeholder="Instructions générales données au modèle..."
+        disabled
+      ></textarea>
+    </div>
+
+    <div class="editor">
+      <label for="context-prompt">Context</label>
+      <textarea
+        id="context-prompt"
+        rows="5"
+        placeholder="Contexte utile pour cette étape..."
+        disabled
+      ></textarea>
+    </div>
+
+    <div class="editor">
+      <label for="prompt">User</label>
+      <textarea
+        id="prompt"
+        rows="5"
+        placeholder="Message de l’utilisateur..."
+        disabled
+      ></textarea>
+    </div>
 
     <button id="send" disabled>Envoyer</button>
 
@@ -37,6 +60,8 @@ document.querySelector("#app").innerHTML = `
 const loadButton = document.querySelector("#load");
 const sendButton = document.querySelector("#send");
 const promptInput = document.querySelector("#prompt");
+const systemPromptInput = document.querySelector("#system-prompt");
+const contextPromptInput = document.querySelector("#context-prompt");
 const status = document.querySelector("#status");
 
 const result = document.querySelector("#result");
@@ -111,6 +136,8 @@ loadButton.addEventListener("click", async () => {
     );
 
     status.textContent = "Qwen est prêt.";
+    systemPromptInput.disabled = false;
+    contextPromptInput.disabled = false;
     promptInput.disabled = false;
     sendButton.disabled = false;
   } catch (error) {
@@ -137,16 +164,24 @@ sendButton.addEventListener("click", async () => {
   sendButton.disabled = true;
   status.textContent = "Génération en cours…";
 
+  const systemPrompt = systemPromptInput.value.trim();
+  const contextPrompt = contextPromptInput.value.trim();
+
+  const systemContent = [
+    systemPrompt,
+    contextPrompt
+      ? `CONTEXTE À PRENDRE EN COMPTE :\n${contextPrompt}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
   const messages = [
     {
       role: "system",
-      content: `
-Tu es un assistant francophone utile et concis.
-Tu dois réfléchir et répondre exclusivement en français.
-Utilise un français grammaticalement correct.
-N’utilise pas de Markdown, sauf si l’utilisateur le demande explicitement.
-Donne une réponse finale claire et naturelle.
-`.trim(),
+      content:
+        systemContent ||
+        "Vous êtes un assistant francophone utile et concis.",
     },
     {
       role: "user",
@@ -166,7 +201,7 @@ Donne une réponse finale claire et naturelle.
     });
 
     await generator(messages, {
-      max_new_tokens: 256,
+      max_new_tokens: 1024,
       do_sample: false,
       streamer,
     });
